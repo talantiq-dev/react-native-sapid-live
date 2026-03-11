@@ -83,6 +83,9 @@ export function useAudioStream(
         const base64Pcm = Buffer.from(new Uint8Array(arrayBuffer)).toString('base64');
 
         captureQueueRef.current.push(base64Pcm);
+        if (captureQueueRef.current.length % 20 === 0) {
+            console.log(`[useAudioStream] Native audio event: captured ${captureQueueRef.current.length} chunks so far`);
+        }
         onFrameRef.current?.(base64Pcm);
     }, []));
 
@@ -226,6 +229,9 @@ export function useAudioStream(
                     for (const bytes of pcmBytesList) {
                         merged.set(bytes, offset);
                         offset += bytes.length;
+                    }
+                    if (pcmBytesList.length > 0) {
+                        console.log(`[useAudioStream] Flushing batch: ${pcmBytesList.length} chunks (${totalLength} bytes)`);
                     }
                     captureQueueRef.current = [];
                     onAudioChunkRef.current(bytesToBase64(merged));
