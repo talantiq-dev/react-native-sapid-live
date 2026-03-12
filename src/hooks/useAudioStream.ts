@@ -230,9 +230,6 @@ export function useAudioStream(
                         merged.set(bytes, offset);
                         offset += bytes.length;
                     }
-                    if (pcmBytesList.length > 0) {
-                        console.log(`[useAudioStream] Flushing batch: ${pcmBytesList.length} chunks (${totalLength} bytes)`);
-                    }
                     captureQueueRef.current = [];
                     onAudioChunkRef.current(bytesToBase64(merged));
                 }

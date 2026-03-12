@@ -1,6 +1,6 @@
 import { LiveAgentProvider, useLiveAgent } from '@live-agent/expo-live-agent';
 import { AppContext, SapidLiveConfig, ConversationEntry, AssistantMode } from './types';
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 interface SapidLiveContextValue {
     mode: AssistantMode;
@@ -60,12 +60,25 @@ function SapidLiveInner({ children }: { children: React.ReactNode }) {
         confirmAction: baseConfirmAction,
         conversationHistory,
         clearHistory,
+        groundingResults,
+        clearGroundingResults,
     } = useLiveAgent();
 
     const [lastDebugFrame, setLastDebugFrame] = useState<string | null>(null);
-    const [groundingResults, setGroundingResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+        if (!lastClientAction) return;
+        if (lastClientAction.type === 'search_web_for_recipes_loading') {
+            setIsSearching(true);
+            clearGroundingResults(); // Clear previous results when new search starts
+        } else if (lastClientAction.type === 'search_web_for_recipes_done') {
+            setIsSearching(false);
+        }
+    }, [lastClientAction, clearGroundingResults]);
+
     const handledActionIds = useRef<Set<string>>(new Set());
+
 
     const startVoice = useCallback(async (ctx: AppContext, agentMode: 'cooking' | 'kitchen' = 'kitchen') => {
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -97,8 +110,16 @@ function SapidLiveInner({ children }: { children: React.ReactNode }) {
 
     const stop = useCallback(() => {
         baseStop();
-        setGroundingResults([]);
-    }, [baseStop]);
+        clearGroundingResults();
+    }, [baseStop, clearGroundingResults]);
+
+    useEffect(() => {
+        console.log('[SapidLiveProvider] isUserSpeaking changed to', isUserSpeaking);
+    }, [isUserSpeaking]);
+
+    useEffect(() => {
+        console.log('[SapidLiveProvider] isAgentSpeaking changed to', isAgentSpeaking);
+    }, [isAgentSpeaking]);
 
     return (
         <SapidLiveContext.Provider value={{
@@ -121,7 +142,7 @@ function SapidLiveInner({ children }: { children: React.ReactNode }) {
             clearHistory,
             lastDebugFrame,
             groundingResults,
-            clearGroundingResults: () => setGroundingResults([]),
+            clearGroundingResults,
             isSearching,
         }}>
             {children}
